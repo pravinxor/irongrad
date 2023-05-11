@@ -10,6 +10,7 @@ pub enum Operation {
         std::rc::Rc<std::cell::RefCell<InnerValue>>,
     ),
     Tanh(std::rc::Rc<std::cell::RefCell<InnerValue>>),
+    Exp(std::rc::Rc<std::cell::RefCell<InnerValue>>),
 }
 
 impl Operation {
@@ -38,6 +39,13 @@ impl Operation {
             Operation::Tanh(v) => {
                 let data = v.borrow().data;
                 v.borrow_mut().grad += data * data;
+                if let Some(op) = &v.borrow().op {
+                    op.backward(v.borrow().grad);
+                }
+            }
+            Operation::Exp(v) => {
+                let data = v.borrow().data;
+                v.borrow_mut().grad += data;
                 if let Some(op) = &v.borrow().op {
                     op.backward(v.borrow().grad);
                 }
@@ -91,6 +99,17 @@ impl Value {
                 data: t,
                 grad: 0.0,
                 op: Some(Operation::Tanh(self.inner)),
+            })),
+        }
+    }
+
+    pub fn exp(self) -> Self {
+        let x = self.inner.borrow().data;
+        Self {
+            inner: std::rc::Rc::new(std::cell::RefCell::new(InnerValue {
+                data: x.exp(),
+                grad: 0.0,
+                op: Some(Operation::Exp(self.inner)),
             })),
         }
     }
