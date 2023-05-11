@@ -158,6 +158,13 @@ impl std::ops::Add for Value {
     }
 }
 
+impl std::ops::Neg for Value {
+    type Output = Value;
+    fn neg(self) -> Self::Output {
+        self * Value::from(-1.0)
+    }
+}
+
 impl std::ops::Mul for Value {
     type Output = Value;
     fn mul(self, rhs: Value) -> Self::Output {
