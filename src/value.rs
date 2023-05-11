@@ -17,9 +17,14 @@ pub struct Previous<T> {
 pub struct InnerValue<T> {
     /// The value stored
     pub data: T,
+
+    /// The derivative of the current Value with respect to its @prev values
+    grad: T,
+
     /// The operation that created the value (None if the value was initialized with Self::new())
     op: Option<Operation>,
-    // The previous operations that created the value (Also None if the value was initialized with Self::new())
+
+    /// The previous operations that created the value (Also None if the value was initialized with Self::new())
     prev: Option<Previous<T>>,
 }
 
@@ -28,11 +33,12 @@ pub struct Value<T> {
     pub inner: Rc<InnerValue<T>>,
 }
 
-impl<T> Value<T> {
+impl<T: std::default::Default> Value<T> {
     pub fn new(data: T) -> Self {
         Self {
             inner: Rc::new(InnerValue {
                 data,
+                grad: T::default(), // Initialize to default/0 signifying no effect on gradient
                 op: None,
                 prev: None,
             }),
@@ -40,12 +46,15 @@ impl<T> Value<T> {
     }
 }
 
-impl<T: std::ops::Add<Output = T> + Copy> std::ops::Add<Value<T>> for Value<T> {
+impl<T: std::ops::Add<Output = T> + Copy + std::default::Default> std::ops::Add<Value<T>>
+    for Value<T>
+{
     type Output = Value<T>;
     fn add(self, rhs: Value<T>) -> Self::Output {
         Self::Output {
             inner: Rc::new(InnerValue {
                 data: self.inner.data + rhs.inner.data,
+                grad: T::default(),
                 op: Some(Operation::Add),
                 prev: Some(Previous {
                     lhs: self.inner,
@@ -56,12 +65,15 @@ impl<T: std::ops::Add<Output = T> + Copy> std::ops::Add<Value<T>> for Value<T> {
     }
 }
 
-impl<T: std::ops::Mul<Output = T> + Copy> std::ops::Mul<Value<T>> for Value<T> {
+impl<T: std::ops::Mul<Output = T> + Copy + std::default::Default> std::ops::Mul<Value<T>>
+    for Value<T>
+{
     type Output = Value<T>;
     fn mul(self, rhs: Value<T>) -> Self::Output {
         Self::Output {
             inner: Rc::new(InnerValue {
                 data: self.inner.data * rhs.inner.data,
+                grad: T::default(),
                 op: Some(Operation::Mul),
                 prev: Some(Previous {
                     lhs: self.inner,
