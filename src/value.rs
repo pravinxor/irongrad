@@ -1,8 +1,9 @@
 #[derive(Debug)]
+/// An operation identifier, containing the enums that were used
 pub enum Operation {
-    Add,
-    Mul,
-    Tanh,
+    Add(std::rc::Rc<InnerValue>, std::rc::Rc<InnerValue>),
+    Mul(std::rc::Rc<InnerValue>, std::rc::Rc<InnerValue>),
+    Tanh(std::rc::Rc<InnerValue>),
 }
 
 #[derive(Debug)]
@@ -22,9 +23,6 @@ pub struct InnerValue {
 
     /// The operation that created the value (None if the value was initialized with Self::new())
     op: Option<Operation>,
-
-    /// The previous value(s) that created the current value
-    previous: Vec<std::rc::Rc<InnerValue>>,
 }
 
 impl PartialEq for InnerValue {
@@ -42,6 +40,7 @@ impl std::hash::Hash for InnerValue {
 }
 
 impl InnerValue {
+    /// Recursively builds the topological graph to be used for back-propogation
     pub fn build_topo<'a: 'b, 'b>(
         &'a self,
         topo: &mut Vec<&'a InnerValue>,
@@ -49,9 +48,15 @@ impl InnerValue {
     ) {
         if !visited.contains(&self) {
             visited.insert(self);
-            self.previous
-                .iter()
-                .for_each(|child| child.build_topo(topo, visited));
+            if let Some(op) = self.op.as_ref() {
+                match op {
+                    Operation::Add(rhs, lhs) | Operation::Mul(rhs, lhs) => {
+                        rhs.build_topo(topo, visited);
+                        lhs.build_topo(topo, visited);
+                    }
+                    Operation::Tanh(v) => v.build_topo(topo, visited),
+                }
+            }
             topo.push(self);
         }
     }
@@ -69,7 +74,6 @@ impl Value {
                 data,
                 grad: 0.0, // Initialize to default/0 signifying no effect on gradient
                 op: None,
-                previous: vec![],
             }),
         }
     }
@@ -81,8 +85,7 @@ impl Value {
             inner: std::rc::Rc::new(InnerValue {
                 data: t,
                 grad: 0.0,
-                op: Some(Operation::Tanh),
-                previous: vec![self.inner],
+                op: Some(Operation::Tanh(self.inner)),
             }),
         }
     }
@@ -102,8 +105,7 @@ impl std::ops::Add<Value> for Value {
             inner: std::rc::Rc::new(InnerValue {
                 data: self.inner.data + rhs.inner.data,
                 grad: 0.0,
-                op: Some(Operation::Add),
-                previous: vec![self.inner, rhs.inner],
+                op: Some(Operation::Add(self.inner, rhs.inner)),
             }),
         }
     }
@@ -116,8 +118,7 @@ impl std::ops::Mul<Value> for Value {
             inner: std::rc::Rc::new(InnerValue {
                 data: self.inner.data * rhs.inner.data,
                 grad: 0.0,
-                op: Some(Operation::Mul),
-                previous: vec![self.inner, rhs.inner],
+                op: Some(Operation::Mul(self.inner, rhs.inner)),
             }),
         }
     }
