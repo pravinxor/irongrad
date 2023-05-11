@@ -11,6 +11,7 @@ pub enum Operation {
     ),
     Tanh(std::rc::Rc<std::cell::RefCell<InnerValue>>),
     Exp(std::rc::Rc<std::cell::RefCell<InnerValue>>),
+    Pow(std::rc::Rc<std::cell::RefCell<InnerValue>>, f64),
 }
 
 impl Operation {
@@ -48,6 +49,13 @@ impl Operation {
                 v.borrow_mut().grad += data;
                 if let Some(op) = &v.borrow().op {
                     op.backward(v.borrow().grad);
+                }
+            }
+            Operation::Pow(base, exponent) => {
+                let data = base.borrow().data;
+                base.borrow_mut().data += exponent * (data.powf(exponent - 1.0)) * grad;
+                if let Some(op) = &base.borrow().op {
+                    op.backward(base.borrow().grad);
                 }
             }
         }
@@ -114,6 +122,17 @@ impl Value {
         }
     }
 
+    pub fn powf(self, n: f64) -> Self {
+        let x = self.inner.borrow().data;
+        Self {
+            inner: std::rc::Rc::new(std::cell::RefCell::new(InnerValue {
+                data: x.powf(n),
+                grad: 0.0,
+                op: Some(Operation::Pow(self.inner, n)),
+            })),
+        }
+    }
+
     pub fn backwards(&self) {
         self.inner.borrow_mut().backwards();
     }
@@ -150,5 +169,12 @@ impl std::ops::Mul for Value {
                 op: Some(Operation::Mul(self.inner, rhs.inner)),
             })),
         }
+    }
+}
+
+impl std::ops::Div for Value {
+    type Output = Value;
+    fn div(self, rhs: Self) -> Self::Output {
+        self * rhs.powf(-1.0)
     }
 }
