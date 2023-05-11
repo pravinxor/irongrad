@@ -4,13 +4,14 @@ use std::rc::Rc;
 pub enum Operation {
     Add,
     Mul,
+    Tanh,
 }
 
 #[derive(Debug)]
 /// Struct holding the lhs and rhs values that were combined with an operation
 pub struct Previous {
-    lhs: Rc<InnerValue>,
-    rhs: Rc<InnerValue>,
+    lhs: Option<Rc<InnerValue>>,
+    rhs: Option<Rc<InnerValue>>,
 }
 
 #[derive(Debug)]
@@ -25,7 +26,7 @@ pub struct InnerValue {
     op: Option<Operation>,
 
     /// The previous operations that created the value (Also None if the value was initialized with Self::new())
-    prev: Option<Previous>,
+    prev: Previous,
 }
 
 #[derive(Debug)]
@@ -40,7 +41,26 @@ impl Value {
                 data,
                 grad: 0.0, // Initialize to default/0 signifying no effect on gradient
                 op: None,
-                prev: None,
+                prev: Previous {
+                    lhs: None,
+                    rhs: None,
+                },
+            }),
+        }
+    }
+
+    pub fn tanh(self) -> Self {
+        let x = self.inner.data;
+        let t = ((2.0 * x).exp() - 1.0) / ((2.0 * x).exp() + 1.0); // The actual tanh computation
+        Self {
+            inner: Rc::new(InnerValue {
+                data: t,
+                grad: 0.0,
+                op: Some(Operation::Tanh),
+                prev: Previous {
+                    lhs: Some(self.inner),
+                    rhs: None,
+                },
             }),
         }
     }
@@ -54,10 +74,10 @@ impl std::ops::Add<Value> for Value {
                 data: self.inner.data + rhs.inner.data,
                 grad: 0.0,
                 op: Some(Operation::Add),
-                prev: Some(Previous {
-                    lhs: self.inner,
-                    rhs: rhs.inner,
-                }),
+                prev: Previous {
+                    lhs: Some(self.inner),
+                    rhs: Some(rhs.inner),
+                },
             }),
         }
     }
@@ -71,10 +91,10 @@ impl std::ops::Mul<Value> for Value {
                 data: self.inner.data * rhs.inner.data,
                 grad: 0.0,
                 op: Some(Operation::Mul),
-                prev: Some(Previous {
-                    lhs: self.inner,
-                    rhs: rhs.inner,
-                }),
+                prev: Previous {
+                    lhs: Some(self.inner),
+                    rhs: Some(rhs.inner),
+                },
             }),
         }
     }
