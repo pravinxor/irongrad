@@ -8,37 +8,37 @@ pub enum Operation {
 
 #[derive(Debug)]
 /// Struct holding the lhs and rhs values that were combined with an operation
-pub struct Previous<T> {
-    lhs: Rc<InnerValue<T>>,
-    rhs: Rc<InnerValue<T>>,
+pub struct Previous {
+    lhs: Rc<InnerValue>,
+    rhs: Rc<InnerValue>,
 }
 
 #[derive(Debug)]
-pub struct InnerValue<T> {
+pub struct InnerValue {
     /// The value stored
-    pub data: T,
+    pub data: f64,
 
     /// The derivative of the current Value with respect to its @prev values
-    grad: T,
+    grad: f64,
 
     /// The operation that created the value (None if the value was initialized with Self::new())
     op: Option<Operation>,
 
     /// The previous operations that created the value (Also None if the value was initialized with Self::new())
-    prev: Option<Previous<T>>,
+    prev: Option<Previous>,
 }
 
 #[derive(Debug)]
-pub struct Value<T> {
-    pub inner: Rc<InnerValue<T>>,
+pub struct Value {
+    pub inner: Rc<InnerValue>,
 }
 
-impl<T: std::default::Default> Value<T> {
-    pub fn new(data: T) -> Self {
+impl Value {
+    pub fn new(data: f64) -> Self {
         Self {
             inner: Rc::new(InnerValue {
                 data,
-                grad: T::default(), // Initialize to default/0 signifying no effect on gradient
+                grad: 0.0, // Initialize to default/0 signifying no effect on gradient
                 op: None,
                 prev: None,
             }),
@@ -46,15 +46,13 @@ impl<T: std::default::Default> Value<T> {
     }
 }
 
-impl<T: std::ops::Add<Output = T> + Copy + std::default::Default> std::ops::Add<Value<T>>
-    for Value<T>
-{
-    type Output = Value<T>;
-    fn add(self, rhs: Value<T>) -> Self::Output {
+impl std::ops::Add<Value> for Value {
+    type Output = Value;
+    fn add(self, rhs: Value) -> Self::Output {
         Self::Output {
             inner: Rc::new(InnerValue {
                 data: self.inner.data + rhs.inner.data,
-                grad: T::default(),
+                grad: 0.0,
                 op: Some(Operation::Add),
                 prev: Some(Previous {
                     lhs: self.inner,
@@ -65,15 +63,13 @@ impl<T: std::ops::Add<Output = T> + Copy + std::default::Default> std::ops::Add<
     }
 }
 
-impl<T: std::ops::Mul<Output = T> + Copy + std::default::Default> std::ops::Mul<Value<T>>
-    for Value<T>
-{
-    type Output = Value<T>;
-    fn mul(self, rhs: Value<T>) -> Self::Output {
+impl std::ops::Mul<Value> for Value {
+    type Output = Value;
+    fn mul(self, rhs: Value) -> Self::Output {
         Self::Output {
             inner: Rc::new(InnerValue {
                 data: self.inner.data * rhs.inner.data,
-                grad: T::default(),
+                grad: 0.0,
                 op: Some(Operation::Mul),
                 prev: Some(Previous {
                     lhs: self.inner,
