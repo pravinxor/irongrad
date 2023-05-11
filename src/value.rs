@@ -165,6 +165,13 @@ impl std::ops::Neg for Value {
     }
 }
 
+impl std::ops::Sub for Value {
+    type Output = Value;
+    fn sub(self, rhs: Self) -> Self::Output {
+        self + -rhs
+    }
+}
+
 impl std::ops::Mul for Value {
     type Output = Value;
     fn mul(self, rhs: Value) -> Self::Output {
