@@ -83,7 +83,7 @@ impl InnerValue {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Value {
     pub inner: std::rc::Rc<std::cell::RefCell<InnerValue>>,
 }
