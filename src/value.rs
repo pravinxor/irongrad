@@ -67,20 +67,6 @@ impl InnerValue {
     }
 }
 
-impl PartialEq for InnerValue {
-    fn eq(&self, other: &Self) -> bool {
-        std::ptr::eq(self, other)
-    }
-}
-
-impl Eq for InnerValue {}
-
-impl std::hash::Hash for InnerValue {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        std::ptr::hash(self, state);
-    }
-}
-
 #[derive(Debug)]
 pub struct Value {
     pub inner: std::rc::Rc<std::cell::RefCell<InnerValue>>,
@@ -114,7 +100,13 @@ impl Value {
     }
 }
 
-impl std::ops::Add<Value> for Value {
+impl From<f64> for Value {
+    fn from(value: f64) -> Self {
+        Value::new(value)
+    }
+}
+
+impl std::ops::Add for Value {
     type Output = Value;
     fn add(self, rhs: Value) -> Self::Output {
         let sum = self.inner.borrow().data + rhs.inner.borrow().data;
@@ -128,7 +120,7 @@ impl std::ops::Add<Value> for Value {
     }
 }
 
-impl std::ops::Mul<Value> for Value {
+impl std::ops::Mul for Value {
     type Output = Value;
     fn mul(self, rhs: Value) -> Self::Output {
         let product = self.inner.borrow().data * rhs.inner.borrow().data;
