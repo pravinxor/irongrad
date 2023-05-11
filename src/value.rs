@@ -7,13 +7,6 @@ pub enum Operation {
 }
 
 #[derive(Debug)]
-/// Struct holding the lhs and rhs values that were combined with an operation
-pub struct Previous {
-    lhs: Option<std::rc::Rc<InnerValue>>,
-    rhs: Option<std::rc::Rc<InnerValue>>,
-}
-
-#[derive(Debug)]
 pub struct InnerValue {
     /// The value stored
     pub data: f64,
