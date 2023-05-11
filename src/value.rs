@@ -39,14 +39,14 @@ impl Operation {
             }
             Operation::Tanh(v) => {
                 let data = v.borrow().data;
-                v.borrow_mut().grad += data * data;
+                v.borrow_mut().grad += (1.0 - data.powi(2)) * grad;
                 if let Some(op) = &v.borrow().op {
                     op.backward(v.borrow().grad);
                 }
             }
             Operation::Exp(v) => {
                 let data = v.borrow().data;
-                v.borrow_mut().grad += data;
+                v.borrow_mut().grad += data * grad;
                 if let Some(op) = &v.borrow().op {
                     op.backward(v.borrow().grad);
                 }
