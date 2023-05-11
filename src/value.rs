@@ -1,9 +1,50 @@
 #[derive(Debug)]
 /// An operation identifier, containing the enums that were used
 pub enum Operation {
-    Add(std::rc::Rc<InnerValue>, std::rc::Rc<InnerValue>),
-    Mul(std::rc::Rc<InnerValue>, std::rc::Rc<InnerValue>),
-    Tanh(std::rc::Rc<InnerValue>),
+    Add(
+        std::rc::Rc<std::cell::RefCell<InnerValue>>,
+        std::rc::Rc<std::cell::RefCell<InnerValue>>,
+    ),
+    Mul(
+        std::rc::Rc<std::cell::RefCell<InnerValue>>,
+        std::rc::Rc<std::cell::RefCell<InnerValue>>,
+    ),
+    Tanh(std::rc::Rc<std::cell::RefCell<InnerValue>>),
+}
+
+impl Operation {
+    fn backward(&self, grad: f64) -> Result<(), Box<dyn std::error::Error>> {
+        match self {
+            Operation::Add(lhs, rhs) => {
+                lhs.try_borrow_mut()?.grad += 1.0 * grad;
+                rhs.try_borrow_mut()?.grad += 1.0 * grad;
+                if let Some(op) = &lhs.borrow().op {
+                    op.backward(lhs.borrow().grad)?;
+                }
+                if let Some(op) = &lhs.borrow().op {
+                    op.backward(lhs.borrow().grad)?;
+                }
+            }
+            Operation::Mul(lhs, rhs) => {
+                lhs.try_borrow_mut()?.grad = rhs.borrow().data * grad;
+                rhs.try_borrow_mut()?.grad += lhs.borrow().data * grad;
+                if let Some(op) = &lhs.borrow().op {
+                    op.backward(lhs.borrow().grad)?;
+                }
+                if let Some(op) = &rhs.borrow().op {
+                    op.backward(rhs.borrow().grad)?;
+                }
+            }
+            Operation::Tanh(v) => {
+                let data = v.borrow().data;
+                v.try_borrow_mut()?.grad += data * data;
+                if let Some(op) = &v.borrow().op {
+                    op.backward(v.borrow().grad)?;
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug)]
@@ -16,6 +57,16 @@ pub struct InnerValue {
 
     /// The operation that created the value (None if the value was initialized with Self::new())
     op: Option<Operation>,
+}
+
+impl InnerValue {
+    pub fn backwards(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        self.grad = 1.0;
+        if let Some(op) = &self.op {
+            op.backward(self.grad)?;
+        }
+        Ok(())
+    }
 }
 
 impl PartialEq for InnerValue {
@@ -32,74 +83,45 @@ impl std::hash::Hash for InnerValue {
     }
 }
 
-impl InnerValue {
-    /// Recursively builds the topological graph to be used for back-propogation
-    pub fn build_topo<'a: 'b, 'b>(
-        &'a self,
-        topo: &mut Vec<&'a InnerValue>,
-        visited: &mut std::collections::HashSet<&'b InnerValue>,
-    ) {
-        if !visited.contains(&self) {
-            visited.insert(self);
-            if let Some(op) = self.op.as_ref() {
-                match op {
-                    Operation::Add(rhs, lhs) | Operation::Mul(rhs, lhs) => {
-                        rhs.build_topo(topo, visited);
-                        lhs.build_topo(topo, visited);
-                    }
-                    Operation::Tanh(v) => v.build_topo(topo, visited),
-                }
-            }
-            topo.push(self);
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct Value {
-    pub inner: std::rc::Rc<InnerValue>,
+    pub inner: std::rc::Rc<std::cell::RefCell<InnerValue>>,
 }
 
 impl Value {
     pub fn new(data: f64) -> Self {
         Self {
-            inner: std::rc::Rc::new(InnerValue {
+            inner: std::rc::Rc::new(std::cell::RefCell::new(InnerValue {
                 data,
                 grad: 0.0, // Initialize to default/0 signifying no effect on gradient
                 op: None,
-            }),
+            })),
         }
     }
 
     pub fn tanh(self) -> Self {
-        let x = self.inner.data;
+        let x = self.inner.borrow().data;
         let t = ((2.0 * x).exp() - 1.0) / ((2.0 * x).exp() + 1.0); // The actual tanh computation
         Self {
-            inner: std::rc::Rc::new(InnerValue {
+            inner: std::rc::Rc::new(std::cell::RefCell::new(InnerValue {
                 data: t,
                 grad: 0.0,
                 op: Some(Operation::Tanh(self.inner)),
-            }),
+            })),
         }
-    }
-
-    pub fn build_topo(&self) -> Vec<&InnerValue> {
-        let mut topo = Vec::new();
-        let mut visited = std::collections::HashSet::new();
-        self.inner.build_topo(&mut topo, &mut visited);
-        topo
     }
 }
 
 impl std::ops::Add<Value> for Value {
     type Output = Value;
     fn add(self, rhs: Value) -> Self::Output {
+        let sum = self.inner.borrow().data + rhs.inner.borrow().data;
         Self::Output {
-            inner: std::rc::Rc::new(InnerValue {
-                data: self.inner.data + rhs.inner.data,
+            inner: std::rc::Rc::new(std::cell::RefCell::new(InnerValue {
+                data: sum,
                 grad: 0.0,
                 op: Some(Operation::Add(self.inner, rhs.inner)),
-            }),
+            })),
         }
     }
 }
@@ -107,12 +129,13 @@ impl std::ops::Add<Value> for Value {
 impl std::ops::Mul<Value> for Value {
     type Output = Value;
     fn mul(self, rhs: Value) -> Self::Output {
+        let product = self.inner.borrow().data * rhs.inner.borrow().data;
         Self::Output {
-            inner: std::rc::Rc::new(InnerValue {
-                data: self.inner.data * rhs.inner.data,
+            inner: std::rc::Rc::new(std::cell::RefCell::new(InnerValue {
+                data: product,
                 grad: 0.0,
                 op: Some(Operation::Mul(self.inner, rhs.inner)),
-            }),
+            })),
         }
     }
 }
