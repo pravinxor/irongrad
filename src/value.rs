@@ -13,44 +13,43 @@ pub enum Operation {
 }
 
 impl Operation {
-    fn backward(&self, grad: f64) -> Result<(), Box<dyn std::error::Error>> {
+    fn backward(&self, grad: f64) {
         match self {
             Operation::Add(lhs, rhs) => {
-                lhs.try_borrow_mut()?.grad += 1.0 * grad;
-                rhs.try_borrow_mut()?.grad += 1.0 * grad;
+                lhs.borrow_mut().grad += 1.0 * grad;
+                rhs.borrow_mut().grad += 1.0 * grad;
                 if let Some(op) = &lhs.borrow().op {
-                    op.backward(lhs.borrow().grad)?;
+                    op.backward(lhs.borrow().grad);
                 }
                 if let Some(op) = &lhs.borrow().op {
-                    op.backward(lhs.borrow().grad)?;
+                    op.backward(lhs.borrow().grad);
                 }
             }
             Operation::Mul(lhs, rhs) => {
-                lhs.try_borrow_mut()?.grad = rhs.borrow().data * grad;
-                rhs.try_borrow_mut()?.grad += lhs.borrow().data * grad;
+                lhs.borrow_mut().grad = rhs.borrow().data * grad;
+                rhs.borrow_mut().grad += lhs.borrow().data * grad;
                 if let Some(op) = &lhs.borrow().op {
-                    op.backward(lhs.borrow().grad)?;
+                    op.backward(lhs.borrow().grad);
                 }
                 if let Some(op) = &rhs.borrow().op {
-                    op.backward(rhs.borrow().grad)?;
+                    op.backward(rhs.borrow().grad);
                 }
             }
             Operation::Tanh(v) => {
                 let data = v.borrow().data;
-                v.try_borrow_mut()?.grad += data * data;
+                v.borrow_mut().grad += data * data;
                 if let Some(op) = &v.borrow().op {
-                    op.backward(v.borrow().grad)?;
+                    op.backward(v.borrow().grad);
                 }
             }
         }
-        Ok(())
     }
 }
 
 #[derive(Debug)]
 pub struct InnerValue {
     /// The value stored
-    pub data: f64,
+    data: f64,
 
     /// The derivative of the current Value with respect to its @prev values
     grad: f64,
@@ -60,12 +59,11 @@ pub struct InnerValue {
 }
 
 impl InnerValue {
-    pub fn backwards(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn backwards(&mut self) {
         self.grad = 1.0;
         if let Some(op) = &self.op {
-            op.backward(self.grad)?;
+            op.backward(self.grad);
         }
-        Ok(())
     }
 }
 
@@ -109,6 +107,10 @@ impl Value {
                 op: Some(Operation::Tanh(self.inner)),
             })),
         }
+    }
+
+    pub fn backwards(&self) {
+        self.inner.borrow_mut().backwards();
     }
 }
 
