@@ -23,12 +23,12 @@ impl Operation {
                 if let Some(op) = &lhs.borrow().op {
                     op.backward(lhs.borrow().grad);
                 }
-                if let Some(op) = &lhs.borrow().op {
-                    op.backward(lhs.borrow().grad);
+                if let Some(op) = &rhs.borrow().op {
+                    op.backward(rhs.borrow().grad);
                 }
             }
             Operation::Mul(lhs, rhs) => {
-                lhs.borrow_mut().grad = rhs.borrow().data * grad;
+                lhs.borrow_mut().grad += rhs.borrow().data * grad;
                 rhs.borrow_mut().grad += lhs.borrow().data * grad;
                 if let Some(op) = &lhs.borrow().op {
                     op.backward(lhs.borrow().grad);
@@ -68,7 +68,7 @@ pub struct InnerValue {
     pub data: f64,
 
     /// The derivative of the current Value with respect to its @prev values
-    grad: f64,
+    pub grad: f64,
 
     /// The operation that created the value (None if the value was initialized with Self::new())
     op: Option<Operation>,
