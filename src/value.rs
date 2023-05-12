@@ -53,7 +53,7 @@ impl Operation {
             }
             Operation::Pow(base, exponent) => {
                 let data = base.borrow().data;
-                base.borrow_mut().data += exponent * (data.powf(exponent - 1.0)) * grad;
+                base.borrow_mut().grad += exponent * (data.powf(exponent - 1.0)) * grad;
                 if let Some(op) = &base.borrow().op {
                     op.backward(base.borrow().grad);
                 }
