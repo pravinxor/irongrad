@@ -17,17 +17,27 @@ impl Neuron {
             bias: crate::Value::new(rng.gen_range(-1.0..1.0)),
         }
     }
-    pub fn call(self, x: &[f64]) -> crate::Value {
+    pub fn call(self, x: &[crate::Value]) -> crate::Value {
         let mut act = self.bias;
         for z in self
             .weights
             .iter()
-            .zip(x.iter())
-            .map(|(wi, xi)| (wi.to_owned(), crate::Value::new(*xi)))
+            .cloned()
+            .zip(x.iter().cloned())
             .map(|(wi, xi)| wi * xi)
         {
             act = act + z;
         }
         act.tanh()
+    }
+}
+
+impl std::fmt::Display for Neuron {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "W:");
+        for weight in &self.weights {
+            write!(f, "{} ", weight)?;
+        }
+        write!(f, " + B: {}", self.bias)
     }
 }

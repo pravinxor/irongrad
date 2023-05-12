@@ -9,11 +9,17 @@ impl Layer {
         }
     }
 
-    pub fn call(&self, x: &[f64]) -> Vec<crate::Value> {
-        self.neurons
-            .iter()
-            .map(|n| n.to_owned())
-            .map(|n| n.call(x))
-            .collect()
+    pub fn call(&self, x: &[crate::Value]) -> Vec<crate::Value> {
+        self.neurons.iter().cloned().map(|n| n.call(x)).collect()
+    }
+}
+
+impl std::fmt::Display for Layer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[ ")?;
+        for neuron in &self.neurons {
+            write!(f, "{} ", neuron)?;
+        }
+        write!(f, "]")
     }
 }

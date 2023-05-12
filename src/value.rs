@@ -65,7 +65,7 @@ impl Operation {
 #[derive(Debug)]
 pub struct InnerValue {
     /// The value stored
-    data: f64,
+    pub data: f64,
 
     /// The derivative of the current Value with respect to its @prev values
     grad: f64,
@@ -135,6 +135,12 @@ impl Value {
 
     pub fn backwards(&self) {
         self.inner.borrow_mut().backwards();
+    }
+}
+
+impl std::fmt::Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.inner.borrow().data)
     }
 }
 
