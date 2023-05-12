@@ -22,4 +22,8 @@ impl MLP {
         }
         x
     }
+
+    pub fn parameters(&self) -> Vec<crate::Value> {
+        self.layers.iter().flat_map(|l| l.parameters()).collect()
+    }
 }

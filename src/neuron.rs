@@ -30,11 +30,19 @@ impl Neuron {
         }
         act.tanh()
     }
+
+    pub fn parameters(&self) -> Vec<crate::Value> {
+        self.weights
+            .iter()
+            .cloned()
+            .chain(vec![self.bias.clone()].iter().cloned())
+            .collect()
+    }
 }
 
 impl std::fmt::Display for Neuron {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "W:");
+        write!(f, "W:")?;
         for weight in &self.weights {
             write!(f, "{} ", weight)?;
         }

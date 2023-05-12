@@ -12,6 +12,10 @@ impl Layer {
     pub fn call(&self, x: &[crate::Value]) -> Vec<crate::Value> {
         self.neurons.iter().cloned().map(|n| n.call(x)).collect()
     }
+
+    pub fn parameters(&self) -> Vec<crate::Value> {
+        self.neurons.iter().flat_map(|n| n.parameters()).collect()
+    }
 }
 
 impl std::fmt::Display for Layer {
